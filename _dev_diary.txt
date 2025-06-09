@@ -1,0 +1,4 @@
+08-06-2025:
+  * Learned the useful methods in codeforces api and experimented with it.
+  * Made a basic codeforces model without ai which gets the problems solved and by using the accuracy in each tags it suggest 10 problems from 3 most weak tags for improvement.
+  * Structured the upcoming parts and milestones of the projects.
