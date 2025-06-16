@@ -2,3 +2,17 @@
   * Learned the useful methods in codeforces api and experimented with it.
   * Made a basic codeforces model without ai which gets the problems solved and by using the accuracy in each tags it suggest 10 problems from 3 most weak tags for improvement.
   * Structured the upcoming parts and milestones of the projects.
+
+09-06-2025:
+ * Merged openrouter free ai api with the project.
+ * organised the data collected from codeforces to get the best results.
+ * Expiremented with the prompt to get the best results.
+
+---------------------------------------------------------------------
+new-challenge:
+ * The output is biased towards improving rating.
+reason found:
+ * Input related to rating is larger compared to other input.
+solution:
+ * Reducing the input related to rating is an abstract solution,but thinking of dynamically inputing the data depending on the query to make it efficient.
+--------------------------------------------------------------------
