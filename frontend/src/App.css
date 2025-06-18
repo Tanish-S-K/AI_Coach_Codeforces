@@ -1,0 +1,25 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.search-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding-left: 100px;
+}
+
+.search-bar input {
+  padding: 8px;
+  font-size: 1rem;
+  width: 250px;
+}
+
+.search-bar button {
+  padding: 8px 12px;
+  font-size: 1rem;
+  cursor: pointer;
+}

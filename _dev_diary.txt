@@ -16,3 +16,11 @@ reason found:
 solution:
  * Reducing the input related to rating is an abstract solution,but thinking of dynamically inputing the data depending on the query to make it efficient.
 --------------------------------------------------------------------
+
+In Short: Making the project easily scalable and upgradable.
+^
+|
+10-06-2025 to 18-06-2025:
+  *Experimenting with the options for frontend of the project and was learning react by making small projects.
+  *Planning out the final outcome or result of this projects and devising the future plans.
+  *Integrating the existing project with flask and react to make an organised backend server and frontend client and making the version 3 of this project.

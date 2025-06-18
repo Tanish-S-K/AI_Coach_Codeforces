@@ -1,5 +1,10 @@
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 from cf_api import get_user_data
 from ai_api import query_ai_model
+
+app = Flask(__name__)
+CORS(app)
 
 def build_prompt(user_info, rating_history, problem_history, user_question):
     handle = user_info.get("handle", "Unknown")
@@ -13,7 +18,6 @@ def build_prompt(user_info, rating_history, problem_history, user_question):
             response: In a structured manner with emojis.
 
             example response:
-
                 something....
 
                 *something
@@ -42,33 +46,23 @@ def build_prompt(user_info, rating_history, problem_history, user_question):
             Please read the user's question below and give a detailed, actionable response — ideally with problem suggestions or study strategies tailored to their level.
 
             🗣️ User's question:
-            "{user_question}"
+            \"{user_question}\"
             """
     return prompt
 
-def main():
-    handle = input("🔍 Enter your Codeforces handle: ").strip()
-    question = input("❓ What do you want help with? ").strip()
 
-    print("\n⏳ Fetching Codeforces data...")
+# ==================== 🔗 API ROUTES ====================
+
+@app.route('/get_user_info', methods=['GET'])
+def get_user_info():
+    handle = request.args.get('handle')
+    if not handle:
+        return jsonify({'error': 'Missing handle'}), 400
     try:
         cf_data = get_user_data(handle)
+        return cf_data
     except Exception as e:
-        print(f"❌ Failed to retrieve user data: {e}")
-        return
+        return jsonify({'error': str(e)}), 500
 
-    user_info = cf_data["user_info"]
-    rating_history = cf_data["rating_history"]
-    problem_history = cf_data["problem_history"]
-
-    print("🧠 Building AI prompt...")
-    prompt = build_prompt(user_info, rating_history, problem_history, question)
-
-    print("\n🤖 Querying AI...")
-    response = query_ai_model(prompt)
-
-    print("\n=== 🧑‍🏫 AI Coach Response ===\n")
-    print(response)
-
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    app.run(debug=True)
