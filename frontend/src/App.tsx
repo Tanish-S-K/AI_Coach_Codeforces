@@ -1,108 +1,177 @@
-import { useEffect, useState } from 'react'
-import './App.css'
+import { useEffect, useState } from 'react';
+import {
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  BarChart, Bar, CartesianGrid, Legend
+} from 'recharts';
+import './App.css';
 
-interface Problem {
-  rating: number
-  tags: string[]
-  verdict: string
+interface UserInfo {
+  handle: string;
+  maxRating: number;
+  rating: number;
+  rank: string;
+  maxRank: string;
+  avatar: string;
+  registrationTime: string;
+  days_on_site: number;
 }
 
 interface RatingChange {
-  contest_rank: number
-  new_rating: number
-  old_rating: number
-}
-
-interface UserInfo {
-  handle: string
-  maxRating: number
-  rank: string
-  rating: number
-}
-
-interface APIResponse {
-  problem_history: Problem[]
-  rating_history: RatingChange[]
-  user_info: UserInfo
+  contest_name: string;
+  new_rating: number;
 }
 
 function App() {
-  const [handle, setHandle] = useState('')
-  const [data, setData] = useState<APIResponse | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [handle, setHandle] = useState('');
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [ratingData, setRatingData] = useState<RatingChange[]>([]);
+  const [weeklyData, setWeeklyData] = useState<{ week: string, count: number }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [darkMode, setDarkMode] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    document.body.className = darkMode ? 'dark' : '';
+  }, [darkMode]);
 
   const fetchUserData = async () => {
-    if (!handle.trim()) return
+    if (!handle.trim()) return;
 
-    setLoading(true)
-    setError('')
-    setData(null)
+    setLoading(true);
+    setError('');
+    setUserInfo(null);
+    setRatingData([]);
+    setWeeklyData([]);
+    setSubmitted(true);
 
     try {
-      const response = await fetch(`http://localhost:5000/get_user_info?handle=${handle}`)
-      if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`)
-      const json: APIResponse = await response.json()
-      setData(json)
+      const infoRes = await fetch(`http://localhost:5000/user/info?handle=${handle}`);
+      const ratingRes = await fetch(`http://localhost:5000/user/rating-history?handle=${handle}`);
+      const weeklyRes = await fetch(`http://localhost:5000/user/weekly-progress?handle=${handle}`);
+
+      if (!infoRes.ok || !ratingRes.ok || !weeklyRes.ok) throw new Error("Failed to fetch data");
+
+      const infoData = await infoRes.json();
+      const ratingJson = await ratingRes.json();
+      const weeklyJson = await weeklyRes.json();
+
+      const chartData = ratingJson.map((r: RatingChange, index: number) => ({
+      contest_name: index+1,
+      new_rating: r.new_rating,
+      old_rating: index > 0 ? ratingJson[index - 1].new_rating : r.new_rating,
+      } ));
+
+
+      const weeks = weeklyJson.map((count: number, index: number) => ({
+        week: `Week ${index + 1}`,
+        count,
+      }));
+
+      setUserInfo(infoData);
+      setRatingData(chartData);
+      setWeeklyData(weeks);
     } catch (err: any) {
-      setError(err.message || 'Unknown error occurred')
+      setError(err.message || 'Unknown error');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="app">
-      <h1>AI Codeforces Coach</h1>
+      <nav className="navbar">
+        <div className="navbar-content">
+          <h1>🏆 AI Codeforces Coach</h1>
+          <div className="nav-links">
+            <button className="nav-btn">Contest Advice</button>
+            <button className="nav-btn">Overall View</button>
+            <button className="nav-btn">Progress</button>
+          </div>
+          <button className="toggle-btn" onClick={() => setDarkMode(prev => !prev)}>
+            {darkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+          </button>
+        </div>
+      </nav>
 
-      <div className="search-bar">
-        <input
-          type="text"
-          placeholder="Enter Codeforces handle"
-          value={handle}
-          onChange={(e) => setHandle(e.target.value)}
-        />
-        <button onClick={fetchUserData}>Submit</button>
-      </div>
+      {!submitted && (
+        <div className="center-box">
+          <input
+            type="text"
+            placeholder="Enter Codeforces handle"
+            value={handle}
+            onChange={(e) => setHandle(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && fetchUserData()}
+          />
+          <button onClick={fetchUserData}>Start</button>
+        </div>
+      )}
 
-      {loading && <p>Loading...</p>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {loading && <p className="loading">⏳ Loading...</p>}
+      {error && <p className="error">{error}</p>}
 
-      {data && (
+      {userInfo && (
         <>
-          <section className="user-info">
-            <h2>User Info</h2>
-            <p><strong>Handle:</strong> {data.user_info.handle}</p>
-            <p><strong>Rating:</strong> {data.user_info.rating}</p>
-            <p><strong>Max Rating:</strong> {data.user_info.maxRating}</p>
-            <p><strong>Rank:</strong> {data.user_info.rank}</p>
-          </section>
+          <div className="user-card">
+          <img src={userInfo.avatar} alt="Avatar" />
+          <div className="info">
+            <h2>{userInfo.handle}</h2>
+            <p><strong>Rank:</strong> {userInfo.rank}</p>
+            <p><strong>Max Rank:</strong> {userInfo.maxRank}</p>
+            <p><strong>Rating:</strong> {userInfo.rating}</p>
+            <p><strong>Max Rating:</strong> {userInfo.maxRating}</p>
+            <p><strong>Joined:</strong> {userInfo.registrationTime}</p>
+            <p><strong>Days on site:</strong> {userInfo.days_on_site}</p>
+          </div>
+          </div>
 
-          <section className="rating-history">
-            <h2>Rating History</h2>
-            <ul>
-              {data.rating_history.map((entry, index) => (
-                <li key={index}>
-                  Rank: {entry.contest_rank}, Rating: {entry.old_rating} → {entry.new_rating}
-                </li>
-              ))}
-            </ul>
-          </section>
 
-          <section className="problem-history">
-            <h2>Problem History</h2>
-            <ul>
-              {data.problem_history.map((prob, index) => (
-                <li key={index}>
-                  ✅ {prob.verdict} — {prob.rating} — {prob.tags.join(', ')}
-                </li>
-              ))}
-            </ul>
-          </section>
+          <div className="chart-section">
+            <h2>📈 Rating Over Contests</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={ratingData}>
+                <XAxis dataKey="contest_name" />
+                <YAxis />
+                <Tooltip
+                  formatter={(value, name, props) => {
+                    if (name === 'new_rating') {
+                      const { payload } = props;
+                      const diff = payload.new_rating - payload.old_rating;
+                      return [`${value} (${diff >= 0 ? '+' : ''}${diff})`, 'Rating'];
+                    }
+                    return value;
+                  }}
+                  labelFormatter={(label) => `${label}`}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="new_rating"
+                  stroke="#8884d8"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+
+
+            <h2>📊 Weekly Problems Solved</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={weeklyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="week" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="count" fill="#82ca9d" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </>
       )}
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

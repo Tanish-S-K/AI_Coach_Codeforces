@@ -1,25 +1,114 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+
+* {
+  box-sizing: border-box;
 }
 
-.search-bar {
+body, html {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+.app {
+  width: 109%;
+  overflow-x: hidden;
   display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  padding-left: 100px;
+  flex-direction: column;
+  align-items: center;
 }
 
-.search-bar input {
-  padding: 8px;
-  font-size: 1rem;
-  width: 250px;
+
+.navbar {
+  width: 100%;
+  background-color: #222;
+  padding: 1rem;
+  box-sizing: border-box;
 }
 
-.search-bar button {
-  padding: 8px 12px;
-  font-size: 1rem;
-  cursor: pointer;
+.navbar-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: white;
 }
+
+.nav-links{
+  display: flex;
+  flex-direction: row;
+  padding: 10px;
+}
+
+.center-box {
+  margin-top: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.loading,
+.error {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.chart-section {
+  width: 100%;
+  max-width: 1000px;
+  text-align: center;
+  padding-right: 4%;
+  margin: 2rem auto;
+}
+.user-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding: 2rem;
+  margin: 2rem auto;
+  background: linear-gradient(135deg, #2c3e50, #34495e);
+  border-radius: 16px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  color: white;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  max-width: 700px;
+  width: 100%;
+}
+
+.user-card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+}
+
+.user-card img {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #fff;
+  flex-shrink: 0;
+}
+
+.user-card .info {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.user-card .info h2 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.user-card .info p {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+

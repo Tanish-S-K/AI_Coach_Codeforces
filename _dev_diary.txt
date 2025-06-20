@@ -24,3 +24,8 @@ In Short: Making the project easily scalable and upgradable.
   *Experimenting with the options for frontend of the project and was learning react by making small projects.
   *Planning out the final outcome or result of this projects and devising the future plans.
   *Integrating the existing project with flask and react to make an organised backend server and frontend client and making the version 3 of this project.
+
+19-06-2025 to 20-06-2025:
+  *implemented a rating and problems graph showing statistical informations visually
+  *made more app routes for different information to make the operation quick
+  *made the home page and navigation to different pages look better using css.
