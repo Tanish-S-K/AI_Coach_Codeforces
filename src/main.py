@@ -5,44 +5,20 @@ from cf_api import (
     get_rating_history,
     get_weekly_solved_problems,
     get_problem_history,
+    init_cache,
+    cache_proxy
 )
 from ai_api import query_ai_model
+from contest_advice import contest_analysis
+from contest_advice import ai_contest_prompt as make_ai_prompt_from_contests
 
 app = Flask(__name__)
 CORS(app)
+init_cache(app)
+cache = cache_proxy["instance"]
 
 
-def build_prompt(user_info, rating_history, problem_history, user_question):
-    handle = user_info.get("handle", "Unknown")
-    rank = user_info.get("rank", "Unknown")
-    max_rank = user_info.get("maxRank", "Unknown")
-    rating = user_info.get("rating", "Unrated")
-    max_rating = user_info.get("maxRating", "Unknown")
-
-    prompt = f"""
-You are a helpful and experienced competitive programming coach. A user has come to you for personalized advice.
-Respond in a structured manner with emojis.
-
-📛 Handle: {handle}
-📈 Current rank: {rank}
-🏅 Max rank: {max_rank}
-🔢 Current rating: {rating}
-🌟 Max rating: {max_rating}
-
-📚 Recent Problem History (rating, tags, verdict):
-{problem_history}
-
-📊 Recent Rating History (contest_rank, old_rating, new_rating):
-{rating_history}
-
-🗣️ User's question:
-\"{user_question}\"
-"""
-    return prompt
-
-
-# ==================== 🔗 API ROUTES ====================
-
+# api routes
 @app.route('/user/info', methods=['GET'])
 def route_user_info():
     handle = request.args.get('handle')
@@ -54,13 +30,34 @@ def route_user_info():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/user/rating-history', methods=['GET'])
-def route_rating_history():
-    handle = request.args.get('handle')
+@app.route('/user/contest-advice', methods=['GET', 'POST'])
+def route_contest_advice():
+    handle = request.args.get("handle")
+    if not handle:
+        return jsonify({"error": "Missing handle parameter"}), 400
+
+    cache_key = f"contest_advice_{handle}"
+    cached_result = cache.get(cache_key)
+    if cached_result:
+        return jsonify(cached_result)
+
     try:
-        return jsonify(get_rating_history(handle))
+        user_info = get_user_info(handle)
+        contest_data = contest_analysis(handle, count=3)
+
+        prompt = make_ai_prompt_from_contests(handle, user_info, contest_data)
+        advice = query_ai_model(prompt)
+
+        result = {
+            "advice": advice,
+            "contest_summary": contest_data
+        }
+
+        cache.set(cache_key, result, timeout=3600)
+        return jsonify(result)
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/user/problem-history', methods=['GET'])
@@ -75,30 +72,56 @@ def route_problem_history():
 @app.route('/user/weekly-progress', methods=['GET'])
 def route_weekly_progress():
     handle = request.args.get('handle')
-    weeks = int(request.args.get('weeks', 50))
     try:
-        return jsonify(get_weekly_solved_problems(handle, weeks))
+        return jsonify(get_weekly_solved_problems(handle))
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/user/ask-ai', methods=['POST'])
-def route_ai_coach():
-    data = request.json
-    handle = data.get('handle')
-    user_question = data.get('question')
-    if not handle or not user_question:
-        return jsonify({'error': 'Missing handle or question'}), 400
+@app.route('/user/contest-problem-stats', methods=['GET'])
+def route_contest_problem_stats():
+    handle = request.args.get('handle')
+    if not handle:
+        return jsonify({'error': 'Missing handle'}), 400
     try:
-        user_info = get_user_info(handle)
-        rating_history = get_rating_history(handle)
-        problem_history = get_problem_history(handle)
-
-        prompt = build_prompt(user_info, rating_history, problem_history, user_question)
-        ai_response = query_ai_model(prompt)
-        return jsonify({'response': ai_response})
+        return jsonify(get_contest_problem_stats(handle))
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/user/contest-stats', methods=['POST', 'GET'])
+def route_contest_stats():
+    try:
+        contests = request.get_json()
+        if not contests:
+            return jsonify({'error': 'No input JSON received'}), 400
+        stats = compute_contest_stats(contests)
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/user/rating-history")
+def route_rating_history():
+    handle = request.args.get("handle")
+    if not handle:
+        return jsonify({"error": "Missing handle"}), 400
+
+    try:
+        contests = contest_analysis(handle, count=100)
+        return jsonify([
+            {
+                "contest_name": c["contest_name"],
+                "contest_id": c["contest_id"],
+                "division": c["division"],
+                "new_rating": c["new_rating"],
+                "old_rating": c["old_rating"],
+                "solved": c["problems_solved"]
+            }
+            for c in contests
+        ])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == '__main__':

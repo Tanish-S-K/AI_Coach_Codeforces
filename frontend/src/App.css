@@ -112,3 +112,86 @@ body, html {
   line-height: 1.4;
 }
 
+/* Dark mode */
+body.dark {
+  background-color: #121212;
+  color: #e0e0e0;
+}
+
+body.dark .navbar {
+  background-color: #1e1e1e;
+}
+
+body.dark .navbar-content {
+  color: #ffffff;
+}
+
+body.dark .nav-btn {
+  background-color: #333;
+  color: white;
+  border: 1px solid #555;
+}
+
+body.dark .toggle-btn {
+  background-color: #333;
+  color: white;
+  border: 1px solid #555;
+}
+
+body.dark .center-box input,
+body.dark .center-box button {
+  background-color: #1e1e1e;
+  color: white;
+  border: 1px solid #555;
+}
+
+body.dark .user-card {
+  background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+  color: white;
+}
+
+body.dark .chart-section {
+  background-color: #121212;
+}
+
+body.dark .loading,
+body.dark .error {
+  color: #f0f0f0;
+}
+
+.nav-btn,
+.toggle-btn {
+  padding: 0.5rem 1rem;
+  margin-left: 0.5rem;
+  border: none;
+  background-color: #ffffff;
+  color: #222;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background-color 0.3s ease;
+}
+
+.nav-btn:hover,
+.toggle-btn:hover {
+  background-color: #ddd;
+}
+
+.custom-tooltip {
+  background-color: #f9f9f9;
+  padding: 8px;
+  border: 1px solid #ccc;
+  font-size: 12px;
+  border-radius: 4px;
+  color: #333;
+}
+
+body.dark .custom-tooltip {
+  background-color: #333;
+  color: #eee;
+  border-color: #555;
+}
+
+.custom-tooltip {
+  font-size: 14px;
+  line-height: 1.5;
+}
