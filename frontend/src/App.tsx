@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   BarChart, Bar, CartesianGrid, Legend
 } from 'recharts';
 import './App.css';
+import ContestAdvice from './contest_advice';
 
 interface UserInfo {
   handle: string;
@@ -19,9 +21,13 @@ interface UserInfo {
 interface RatingChange {
   contest_name: string;
   new_rating: number;
+  old_rating?: number;
+  solved: string | number;
+  division: string;
 }
 
 function App() {
+  const navigate = useNavigate();
   const [handle, setHandle] = useState('');
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [ratingData, setRatingData] = useState<RatingChange[]>([]);
@@ -37,7 +43,7 @@ function App() {
 
   const fetchUserData = async () => {
     if (!handle.trim()) return;
-
+    localStorage.setItem("cf_handle", handle);
     setLoading(true);
     setError('');
     setUserInfo(null);
@@ -57,11 +63,12 @@ function App() {
       const weeklyJson = await weeklyRes.json();
 
       const chartData = ratingJson.map((r: RatingChange, index: number) => ({
-      contest_name: index+1,
-      new_rating: r.new_rating,
-      old_rating: index > 0 ? ratingJson[index - 1].new_rating : r.new_rating,
-      } ));
-
+        contest_name: index + 1,
+        new_rating: r.new_rating,
+        old_rating: index > 0 ? ratingJson[index - 1].new_rating : r.new_rating,
+        solved: r.solved ?? "N/A",
+        division: r.division
+      }));
 
       const weeks = weeklyJson.map((count: number, index: number) => ({
         week: `Week ${index + 1}`,
@@ -80,19 +87,6 @@ function App() {
 
   return (
     <div className="app">
-      <nav className="navbar">
-        <div className="navbar-content">
-          <h1>🏆 AI Codeforces Coach</h1>
-          <div className="nav-links">
-            <button className="nav-btn">Contest Advice</button>
-            <button className="nav-btn">Overall View</button>
-            <button className="nav-btn">Progress</button>
-          </div>
-          <button className="toggle-btn" onClick={() => setDarkMode(prev => !prev)}>
-            {darkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
-          </button>
-        </div>
-      </nav>
 
       {!submitted && (
         <div className="center-box">
@@ -113,18 +107,17 @@ function App() {
       {userInfo && (
         <>
           <div className="user-card">
-          <img src={userInfo.avatar} alt="Avatar" />
-          <div className="info">
-            <h2>{userInfo.handle}</h2>
-            <p><strong>Rank:</strong> {userInfo.rank}</p>
-            <p><strong>Max Rank:</strong> {userInfo.maxRank}</p>
-            <p><strong>Rating:</strong> {userInfo.rating}</p>
-            <p><strong>Max Rating:</strong> {userInfo.maxRating}</p>
-            <p><strong>Joined:</strong> {userInfo.registrationTime}</p>
-            <p><strong>Days on site:</strong> {userInfo.days_on_site}</p>
+            <img src={userInfo.avatar} alt="Avatar" />
+            <div className="info">
+              <h2>{userInfo.handle}</h2>
+              <p><strong>Rank:</strong> {userInfo.rank}</p>
+              <p><strong>Max Rank:</strong> {userInfo.maxRank}</p>
+              <p><strong>Rating:</strong> {userInfo.rating}</p>
+              <p><strong>Max Rating:</strong> {userInfo.maxRating}</p>
+              <p><strong>Joined:</strong> {userInfo.registrationTime}</p>
+              <p><strong>Days on site:</strong> {userInfo.days_on_site}</p>
+            </div>
           </div>
-          </div>
-
 
           <div className="chart-section">
             <h2>📈 Rating Over Contests</h2>
@@ -133,15 +126,23 @@ function App() {
                 <XAxis dataKey="contest_name" />
                 <YAxis />
                 <Tooltip
-                  formatter={(value, name, props) => {
-                    if (name === 'new_rating') {
-                      const { payload } = props;
-                      const diff = payload.new_rating - payload.old_rating;
-                      return [`${value} (${diff >= 0 ? '+' : ''}${diff})`, 'Rating'];
-                    }
-                    return value;
-                  }}
-                  labelFormatter={(label) => `${label}`}
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    const delta = data.new_rating - data.old_rating;
+
+                    return (
+                      <div className="custom-tooltip" style={{ background: "#fff", padding: "8px", border: "1px solid #ccc" }}>
+                        <p><strong>{data.division}</strong></p>
+                        <p><strong>New Rating:</strong> {data.new_rating}</p>
+                        <p><strong>Old Rating:</strong> {data.old_rating}</p>
+                        <p><strong>Change:</strong> {delta >= 0 ? '+' : ''}{delta}</p>
+                        <p><strong>Problems Solved:</strong> {data.solved}</p>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
                 />
                 <Legend />
                 <Line
@@ -154,7 +155,6 @@ function App() {
                 />
               </LineChart>
             </ResponsiveContainer>
-
 
             <h2>📊 Weekly Problems Solved</h2>
             <ResponsiveContainer width="100%" height={300}>
