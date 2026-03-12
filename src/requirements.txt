@@ -1,3 +1,7 @@
-
 requests
 python-dotenv
+flask
+flask-cors
+flask-caching
+google-genai
+gunicorn
