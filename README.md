@@ -12,6 +12,9 @@
 
 ---
 
+## 🔗 Live Demo
+👉 **[Try it here]([https://cf-ai-coach.vercel.app](https://ai-coach-codeforces.vercel.app/))**
+
 ## 🗂️ Project Structure
 
 ```
