@@ -13,7 +13,9 @@
 ---
 
 ## 🔗 Live Demo
-👉 **[Try it here]([https://cf-ai-coach.vercel.app](https://ai-coach-codeforces.vercel.app/))**
+👉 **[Try it here](https://ai-coach-codeforces.vercel.app/)**
+
+> ⚠️ Backend is on Render's free tier — first load may take 30–60 sec to wake up. Subsequent requests are instant.
 
 ## 🗂️ Project Structure
 
