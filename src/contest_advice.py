@@ -187,7 +187,7 @@ def ai_contest_prompt(handle: str, user_info: dict, contests: list) -> str:
     ]
     lines.append(random.choice(behavior_styles))
 
-    lines.append("\nDo not list things like a robot. Write your response in paragraphs, like a real coach would speak to their student.")
+    lines.append("\nDo not list things like a robot. Write your response in paragraphs with 8 words per line and then go to next line, like a real coach would speak to their student.")
     
     return "\n".join(lines)
 

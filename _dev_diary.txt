@@ -44,3 +44,6 @@ Improvements:
 	   due to new features which should be reduced.
 	-> Even if the handle is not entered the ai advice loads 
 	   with previously entered handle which should be fixed
+
+1/3/2026:
+	-> improved the frontend of the project

@@ -17,8 +17,8 @@ CORS(app)
 init_cache(app)
 cache = cache_proxy["instance"]
 
+# ======= API Routes =======
 
-# api routes
 @app.route('/user/info', methods=['GET'])
 def route_user_info():
     handle = request.args.get('handle')
