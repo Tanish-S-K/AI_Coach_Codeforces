@@ -6,7 +6,7 @@ import {
 } from "recharts";
 
 // yo this is where the flask homie lives
-const FLASK_HOMIE = "http://localhost:5000";
+const FLASK_HOMIE = "https://ai-coach-codeforces.onrender.com";
 
 // each rank gets its own drip color
 const RANK_DRIP = {
