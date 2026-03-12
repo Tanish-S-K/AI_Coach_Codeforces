@@ -4,6 +4,7 @@ from datetime import datetime
 from flask_caching import Cache
 from collections import defaultdict
 
+# ========== Cache Setup ==========
 cache_proxy = {"instance": None}
 
 def init_cache(app):
@@ -11,6 +12,7 @@ def init_cache(app):
     cache.init_app(app)
     cache_proxy["instance"] = cache
 
+# ========== Codeforces API ==========
 BASE_URL = "https://codeforces.com/api"
 
 def fetch_data(url):
@@ -19,7 +21,7 @@ def fetch_data(url):
         raise Exception(f"❌ Failed to fetch data from {url}")
     return response.json().get("result", [])
 
-
+# ========== Conditional Cache Decorator ==========
 def conditional_memoize(timeout=3600):
     def decorator(func):
         def wrapped(*args, **kwargs):
@@ -31,7 +33,7 @@ def conditional_memoize(timeout=3600):
         return wrapped
     return decorator
 
-# api routes
+# ========== Raw API Functions ==========
 @conditional_memoize(timeout=3600)
 def raw_user_info(handle):
     url = f"{BASE_URL}/user.info?handles={handle}&checkHistoricHandles=false"
@@ -47,6 +49,7 @@ def raw_status(handle):
     url = f"{BASE_URL}/user.status?handle={handle}"
     return fetch_data(url)
 
+# ========== User Info ==========
 @conditional_memoize(timeout=3600)
 def get_user_info(handle):
     result = raw_user_info(handle)
@@ -67,7 +70,7 @@ def get_contest_map():
     return {c["id"]: c for c in contests if c.get("phase") == "FINISHED"}
 
 
-# parsing status
+# ========== Parsed Status ==========
 @conditional_memoize(timeout=1800)
 def parsed_status(handle, weeks=24):
     result = raw_status(handle)
@@ -108,7 +111,7 @@ def parsed_status(handle, weeks=24):
 
     return solved, [weekly_counts[i] for i in range(weeks)]
 
-# public helper functions
+# ========== Public Access Helpers ==========
 def get_problem_history(handle):
     solved, _ = parsed_status(handle)
     return solved
