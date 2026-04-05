@@ -74,7 +74,7 @@ const ContestAdvice = () => {
 
   return (
     <div className="contest-advice">
-      <h1>🧠 AI Contest Advice</h1>
+      <h1>📝 Contest Advice</h1>
 
       {loading && <p>Loading...</p>}
       {error && <p style={{ color: "red" }}>{error}</p>}

@@ -16,10 +16,14 @@ def init_cache(app):
 BASE_URL = "https://codeforces.com/api"
 
 def fetch_data(url):
-    response = requests.get(url)
-    if response.status_code != 200:
-        raise Exception(f"❌ Failed to fetch data from {url}")
-    return response.json().get("result", [])
+    for i in range(3):
+        response = requests.get(url)
+        if response.status_code == 200:
+            return response.json().get("result", [])
+        if response.status_code == 400:
+            raise Exception(f"❌ Bad Request from {url}: {response.text}")
+        time.sleep(1)
+    raise Exception(f"❌ Failed to fetch data from {url}")
 
 # ========== Conditional Cache Decorator ==========
 def conditional_memoize(timeout=3600):

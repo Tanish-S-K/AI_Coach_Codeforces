@@ -775,7 +775,7 @@ const ProblemsPage = ({ whoWeChecking }) => {
 };
 
 // ════════════════════════════════════════════════════════════════════
-//  AI ADVICE PAGE - the cool part, ai roasts ur performance lol
+//  COACH ADVICE PAGE - performance insights
 // ════════════════════════════════════════════════════════════════════
 
 // takes the big blob of ai text and chops it into per-contest pieces
@@ -870,10 +870,10 @@ const OneContestAdviceBlock = ({ contestData, positionNum, totalContests }) => {
             </div>
           )}
 
-          {/* the actual ai coaching words */}
+          {/* the actual coaching words */}
           {contestData.coachWordsForThis && (
             <div className="coach-says-box">
-              <div className="coach-label">🤖 What the coach says</div>
+              <div className="coach-label">📝 What the coach says</div>
               <div className="coach-says">{contestData.coachWordsForThis}</div>
             </div>
           )}
@@ -913,8 +913,8 @@ const AIAdvicePage = ({ whoWeChecking }) => {
 
   if (!whoWeChecking) return (
     <div className="nothing-here">
-      <div className="nothing-icon">🧠</div>
-      <div className="nothing-text">enter a handle to get roasted by the ai coach lol</div>
+      <div className="nothing-icon">📝</div>
+      <div className="nothing-text">enter a handle to get your performance feedback</div>
     </div>
   );
 
@@ -934,7 +934,7 @@ const AIAdvicePage = ({ whoWeChecking }) => {
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.75rem" }}>
           <div className="alive-dot" />
           <span style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.12em", color: VIBE.muted }}>
-            AI Coach is online
+            Coach is online
           </span>
         </div>
         <div className="ai-banner-heading">
@@ -955,7 +955,7 @@ const AIAdvicePage = ({ whoWeChecking }) => {
         <div style={{ textAlign: "center", padding: "3rem" }}>
           <WaitingForData />
           <div style={{ color: VIBE.muted, fontSize: "0.85rem", marginTop: "1rem" }}>
-            the ai is reading your submissions… give it like 15 seconds
+            analyzing your submissions… give it a few seconds
           </div>
         </div>
       )}
@@ -989,9 +989,9 @@ const AIAdvicePage = ({ whoWeChecking }) => {
                     </div>
                   </div>
                 )}
-                {/* the ai's general thoughts */}
+                {/* the coach's general thoughts */}
                 <div style={{ flex: 1 }}>
-                  <div className="coach-label">🤖 Big picture</div>
+                  <div className="coach-label">📝 Big picture</div>
                   <div className="coach-says" style={{ fontSize: "0.9rem" }}>{overallVibeLines}</div>
                 </div>
               </div>
@@ -1072,7 +1072,7 @@ export default function App() {
                 ["dashboard", "Dashboard"],
                 ["contests", "Contests"],
                 ["problems", "Problems"],
-                ["ai", "AI Advice"],
+                ["ai", "Coach's Notes"],
               ].map(([pageId, pageLabel]) => (
                 <button
                   key={pageId}
@@ -1101,13 +1101,13 @@ export default function App() {
         {notSearchedYet && (
           <div className="landing-screen">
             <div style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.2em", color: VIBE.accent, marginBottom: "1.5rem", fontWeight: 700 }}>
-              ⚡ Codeforces AI Coach
+              ⚡ Codeforces Coach
             </div>
             <div className="big-heading">
               Level Up Your<br />Competitive Game
             </div>
             <div className="lil-desc">
-              Drop your CF handle and get deep stats on your performance, plus personalized AI coaching based on your actual contest history.
+              Drop your CF handle and get deep stats on your performance, plus personalized coaching based on your actual contest history.
             </div>
             <div className="handle-input-zone">
               <input
@@ -1123,7 +1123,7 @@ export default function App() {
             </div>
             {/* lil feature hints */}
             <div style={{ marginTop: "3rem", display: "flex", gap: "2rem", color: VIBE.muted, fontSize: "0.8rem", flexWrap: "wrap", justifyContent: "center" }}>
-              {["📊 Rating Charts", "🏆 Contest History", "🧩 Problem Stats", "🤖 AI Roast"].map(feat => (
+              {["📊 Rating Charts", "🏆 Contest History", "🧩 Problem Stats", "📝 Coach Feedback"].map(feat => (
                 <span key={feat}>{feat}</span>
               ))}
             </div>

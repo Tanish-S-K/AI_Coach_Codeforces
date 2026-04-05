@@ -22,4 +22,7 @@ def query_ai_model(prompt: str) -> str:
         )
         return response.text
     except Exception as e:
-        return f"API Error: {str(e)}"
+        err_msg = str(e)
+        if "403" in err_msg or "leaked" in err_msg.lower() or "PERMISSION_DENIED" in err_msg:
+            return "Coach Notes: My API key is currently invalid or leaked (403).\n" * 10
+        return f"API Error: {err_msg}"
