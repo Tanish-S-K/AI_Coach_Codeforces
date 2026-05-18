@@ -1,148 +1,116 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import './App.css';
+import type { DeepAnalysis } from './types';
 
-interface Problem {
-  index: string;
-  name: string;
-  rating: string | number;
-  tags: string[];
-  total_submissions: number;
-  wrong_submissions: number;
-  first_ac_time: string;
+function splitParagraphs(text: string): string[] {
+  return text
+    .split(/\n\s*\n/)
+    .map((part) => part.trim())
+    .filter(Boolean);
 }
 
-interface ContestSummary {
-  contest_id: number;
-  contest_name: string;
-  date: string;
-  delta: number;
-  division: string;
-  rank: number;
-  old_rating: number;
-  new_rating: number;
-  accuracy: string;
-  problems_attempted: number;
-  problems_solved: number;
-  duration_between_first_last_ac_mins: number | string;
-  first_ac_time: string;
-  last_ac_time: string;
-  solved_tags: string[];
-  solved_difficulties: (number | string)[];
-  solved_problems: Problem[];
-  unsolved_problems: Problem[];
-  upsolved_problems: Problem[];
-}
-
-
-const ContestAdvice = () => {
-  const navigate = useNavigate(); // 👈 for redirection
-  const [handle, setHandle] = useState<string>('');
-  const [data, setData] = useState<null | {
-    advice: string;
-    contest_summary: ContestSummary[];
-  }>(null);
+export default function ContestAdvice() {
+  const [analysis, setAnalysis] = useState<DeepAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const stored = localStorage.getItem("cf_handle");
-    if (!stored) {
-      navigate("/overview"); // 👈 redirect to Overview if handle not set
-    } else {
-      setHandle(stored);
-      fetchAdvice(stored);
+    const handle = localStorage.getItem('cf_handle');
+    if (!handle) {
+      setError('Run an analysis from the main page first so the coach has a handle to inspect.');
+      return;
     }
-  }, [navigate]);
 
-  const fetchAdvice = async (userHandle: string) => {
-    setLoading(true);
-    setError(null);
-    setData(null);
-    try {
-      const res = await fetch(`http://localhost:5000/user/contest-advice?handle=${userHandle}`);
-      const json = await res.json();
-      if (json.error) {
-        throw new Error(json.error);
+    async function load() {
+      setLoading(true);
+      setError('');
+      try {
+        const response = await fetch(`/user/deep-analysis?handle=${encodeURIComponent(handle)}`);
+        const payload = (await response.json()) as DeepAnalysis | { error: string };
+        if (!response.ok || 'error' in payload) {
+          throw new Error('error' in payload ? payload.error : 'Failed to load advice');
+        }
+        setAnalysis(payload);
+      } catch (caught) {
+        const message = caught instanceof Error ? caught.message : 'Unknown error';
+        setError(message);
+      } finally {
+        setLoading(false);
       }
-      setData(json);
-    } catch (err: any) {
-      setError(err.message || "Failed to load advice");
-    } finally {
-      setLoading(false);
     }
-  };
+
+    void load();
+  }, []);
 
   return (
-    <div className="contest-advice">
-      <h1>📝 Contest Advice</h1>
+    <div className="page-shell advice-shell">
+      <section className="card advice-hero">
+        <p className="eyebrow">AI Report</p>
+        <h1>Coaching narrative</h1>
+        <p className="hero-text">
+          This page turns the structured performance model into a coach-style review. If Gemini
+          is unavailable, the app falls back to a deterministic report instead of failing.
+        </p>
+      </section>
 
-      {loading && <p>Loading...</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {loading ? <div className="status-banner">Generating coach feedback...</div> : null}
+      {error ? <div className="status-banner error-banner">{error}</div> : null}
 
-      {data && (
-        <div className="advice-section">
-          <div className="ai-advice">
-            <h2>Coach's Feedback:</h2>
-            <p>{data.advice}</p>
-          </div>
-
-          <div className="contest-summary">
-            <h2>📊 Recent Contests</h2>
-            {data.contest_summary.map((contest, i) => (
-              <div key={i} className="contest-card">
-                <h3>{contest.contest_name} ({contest.division})</h3>
-                <p><strong>Date:</strong> {contest.date}</p>
-                <p><strong>Rank:</strong> {contest.rank}</p>
-                <p><strong>Rating:</strong> {contest.old_rating} → {contest.new_rating} ({contest.delta >= 0 ? '+' : ''}{contest.delta})</p>
-                <p><strong>Accuracy:</strong> {contest.accuracy}</p>
-                <p><strong>Problems Solved:</strong> {contest.problems_solved}</p>
-                <p><strong>Duration:</strong> {contest.duration_between_first_last_ac_mins} mins</p>
-
-                {contest.solved_problems.length > 0 && (
-                  <div>
-                    <h4>✅ Solved Problems</h4>
-                    <ul>
-                      {contest.solved_problems.map((p, idx) => (
-                        <li key={idx}>
-                          <strong>{p.index}:</strong> {p.name} ({p.rating}) — {p.total_submissions} attempts, {p.wrong_submissions} WAs
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {contest.upsolved_problems.length > 0 && (
-                  <div>
-                    <h4>📈 Upsolved Problems</h4>
-                    <ul>
-                      {contest.upsolved_problems.map((p, idx) => (
-                        <li key={idx}>
-                          <strong>{p.index}:</strong> {p.name} ({p.rating}) — {p.total_submissions} attempts, {p.wrong_submissions} WAs
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {contest.unsolved_problems.length > 0 && (
-                  <div>
-                    <h4>❌ Unsolved Problems</h4>
-                    <ul>
-                      {contest.unsolved_problems.map((p, idx) => (
-                        <li key={idx}>
-                          <strong>{p.index}:</strong> {p.name} ({p.rating}) — {p.total_submissions} attempts, {p.wrong_submissions} WAs
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+      {analysis ? (
+        <>
+          <section className="card ai-report-card">
+            <div className="report-header">
+              <div>
+                <p className="eyebrow">Provider</p>
+                <h2>{analysis.ai_report.provider}</h2>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+              <span className={`provider-pill ${analysis.ai_report.status}`}>
+                {analysis.ai_report.status}
+              </span>
+            </div>
+
+            <div className="report-copy">
+              {splitParagraphs(analysis.ai_report.report).map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </div>
+          </section>
+
+          <section className="plan-grid">
+            <article className="card">
+              <p className="eyebrow">Priority Focus</p>
+              <h3>This week</h3>
+              <ul className="clean-list">
+                {analysis.training_plan.weekly_focus.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </article>
+
+            <article className="card">
+              <p className="eyebrow">Tag Targets</p>
+              <h3>Deliberate practice</h3>
+              <div className="chip-wrap">
+                {analysis.training_plan.next_tag_targets.map((tag) => (
+                  <span key={tag} className="chip positive-chip">{tag}</span>
+                ))}
+              </div>
+            </article>
+
+            <article className="card">
+              <p className="eyebrow">Recent Contests</p>
+              <h3>Quick scan</h3>
+              <ul className="clean-list">
+                {analysis.recent_contests.slice(0, 5).map((contest) => (
+                  <li key={contest.contest_id}>
+                    {contest.contest_name}: {contest.headline}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          </section>
+        </>
+      ) : null}
     </div>
   );
-};
-
-export default ContestAdvice;
+}

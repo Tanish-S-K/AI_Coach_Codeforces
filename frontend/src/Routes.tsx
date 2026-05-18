@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import App from './App';
 import ContestAdvice from './contest_advice';
 import Layout from './Layout';

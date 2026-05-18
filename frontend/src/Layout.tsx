@@ -1,30 +1,36 @@
-import { Outlet, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import './App.css';
 
 export default function Layout() {
   const navigate = useNavigate();
-  const [darkMode, setDarkMode] = useState<boolean>(document.body.classList.contains('dark'));
-
-  useEffect(() => {
-    document.body.className = darkMode ? 'dark' : '';
-  }, [darkMode]);
+  const location = useLocation();
 
   return (
-    <div className="app">
-      <nav className="navbar">
-        <div className="navbar-content">
-          <h1>🏆 AI Codeforces Coach</h1>
-          <div className="nav-links">
-            <button className="nav-btn" onClick={() => navigate('/advice')}>Contest Advice</button>
-            <button className="nav-btn" onClick={() => navigate('/')}>Overview</button>
-            <button className="nav-btn" onClick={() => navigate('/progress')}>Progress</button>
-          </div>
-          <button className="toggle-btn" onClick={() => setDarkMode(prev => !prev)}>
-            {darkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+    <div className="layout-shell">
+      <header className="topbar">
+        <button className="brand-lockup" onClick={() => navigate('/')}>
+          <span className="brand-mark">CF</span>
+          <span>
+            <strong>AI Coach Rebuilt</strong>
+            <small>deep analysis edition</small>
+          </span>
+        </button>
+
+        <nav className="topbar-nav">
+          <button
+            className={location.pathname === '/' ? 'nav-link active' : 'nav-link'}
+            onClick={() => navigate('/')}
+          >
+            Dashboard
           </button>
-        </div>
-      </nav>
+          <button
+            className={location.pathname === '/advice' ? 'nav-link active' : 'nav-link'}
+            onClick={() => navigate('/advice')}
+          >
+            AI Report
+          </button>
+        </nav>
+      </header>
 
       <Outlet />
     </div>

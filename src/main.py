@@ -1,128 +1,113 @@
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
-from cf_api import (
-    get_user_info,
-    get_rating_history,
-    get_weekly_solved_problems,
-    get_problem_history,
-    init_cache,
-    cache_proxy
-)
+
 from ai_api import query_ai_model
-from contest_advice import contest_analysis
-from contest_advice import ai_contest_prompt as make_ai_prompt_from_contests
+from cf_api import (
+    get_problem_history,
+    get_rating_history,
+    get_user_info,
+    get_weekly_solved_problems,
+    init_cache,
+)
+from contest_advice import ai_contest_prompt, build_deep_analysis
 
 app = Flask(__name__)
 CORS(app)
 init_cache(app)
-cache = cache_proxy["instance"]
 
-# ======= API Routes =======
 
-@app.route('/user/info', methods=['GET'])
-def route_user_info():
-    handle = request.args.get('handle')
+def require_handle():
+    handle = request.args.get("handle", "").strip()
     if not handle:
-        return jsonify({'error': 'Missing handle'}), 400
+        return None, (jsonify({"error": "Missing handle parameter"}), 400)
+    return handle, None
+
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"})
+
+
+@app.route("/user/info", methods=["GET"])
+def route_user_info():
+    handle, error = require_handle()
+    if error:
+        return error
     try:
         return jsonify(get_user_info(handle))
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
-@app.route('/user/contest-advice', methods=['GET', 'POST'])
-def route_contest_advice():
-    handle = request.args.get("handle")
-    if not handle:
-        return jsonify({"error": "Missing handle parameter"}), 400
-
-    cache_key = f"contest_advice_{handle}"
-    cached_result = cache.get(cache_key)
-    if cached_result:
-        return jsonify(cached_result)
-
+@app.route("/user/rating-history", methods=["GET"])
+def route_rating_history():
+    handle, error = require_handle()
+    if error:
+        return error
     try:
-        user_info = get_user_info(handle)
-        contest_data = contest_analysis(handle, count=3)
-
-        prompt = make_ai_prompt_from_contests(handle, user_info, contest_data)
-        advice = query_ai_model(prompt)
-
-        result = {
-            "advice": advice,
-            "contest_summary": contest_data
-        }
-
-        cache.set(cache_key, result, timeout=3600)
-        return jsonify(result)
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify(get_rating_history(handle))
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
-@app.route('/user/problem-history', methods=['GET'])
+@app.route("/user/problem-history", methods=["GET"])
 def route_problem_history():
-    handle = request.args.get('handle')
+    handle, error = require_handle()
+    if error:
+        return error
     try:
         return jsonify(get_problem_history(handle))
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
-@app.route('/user/weekly-progress', methods=['GET'])
+@app.route("/user/weekly-progress", methods=["GET"])
 def route_weekly_progress():
-    handle = request.args.get('handle')
+    handle, error = require_handle()
+    if error:
+        return error
     try:
         return jsonify(get_weekly_solved_problems(handle))
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
-@app.route('/user/contest-problem-stats', methods=['GET'])
-def route_contest_problem_stats():
-    handle = request.args.get('handle')
-    if not handle:
-        return jsonify({'error': 'Missing handle'}), 400
-    try:
-        return jsonify(get_contest_problem_stats(handle))
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/user/contest-stats', methods=['POST', 'GET'])
-def route_contest_stats():
-    try:
-        contests = request.get_json()
-        if not contests:
-            return jsonify({'error': 'No input JSON received'}), 400
-        stats = compute_contest_stats(contests)
-        return jsonify(stats)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route("/user/rating-history")
-def route_rating_history():
-    handle = request.args.get("handle")
-    if not handle:
-        return jsonify({"error": "Missing handle"}), 400
+@app.route("/user/deep-analysis", methods=["GET"])
+def route_deep_analysis():
+    handle, error = require_handle()
+    if error:
+        return error
 
     try:
-        contests = contest_analysis(handle, count=100)
-        return jsonify([
+        analysis = build_deep_analysis(handle)
+        ai_payload = query_ai_model(ai_contest_prompt(handle, analysis), analysis)
+        analysis["ai_report"] = ai_payload
+        return jsonify(analysis)
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/user/contest-advice", methods=["GET"])
+def route_contest_advice():
+    handle, error = require_handle()
+    if error:
+        return error
+
+    try:
+        analysis = build_deep_analysis(handle)
+        ai_payload = query_ai_model(ai_contest_prompt(handle, analysis), analysis)
+        return jsonify(
             {
-                "contest_name": c["contest_name"],
-                "contest_id": c["contest_id"],
-                "division": c["division"],
-                "new_rating": c["new_rating"],
-                "old_rating": c["old_rating"],
-                "solved": c["problems_solved"]
+                "advice": ai_payload["report"],
+                "ai_provider": ai_payload["provider"],
+                "ai_status": ai_payload["status"],
+                "contest_summary": analysis["recent_contests"][:3],
+                "training_plan": analysis["training_plan"],
             }
-            for c in contests
-        ])
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        )
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
