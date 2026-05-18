@@ -9,7 +9,7 @@ from cf_api import (
     get_weekly_solved_problems,
     init_cache,
 )
-from contest_advice import ai_contest_prompt, build_deep_analysis
+from contest_advice import ai_contest_prompt, build_deep_analysis, compare_deep_analyses
 
 app = Flask(__name__)
 CORS(app)
@@ -21,6 +21,16 @@ def require_handle():
     if not handle:
         return None, (jsonify({"error": "Missing handle parameter"}), 400)
     return handle, None
+
+
+def require_pair():
+    handle_a = request.args.get("handle_a", "").strip()
+    handle_b = request.args.get("handle_b", "").strip()
+    if not handle_a or not handle_b:
+        return None, None, (jsonify({"error": "Missing handle_a or handle_b parameter"}), 400)
+    if handle_a.lower() == handle_b.lower():
+        return None, None, (jsonify({"error": "Please choose two different handles"}), 400)
+    return handle_a, handle_b, None
 
 
 @app.route("/health", methods=["GET"])
@@ -105,6 +115,21 @@ def route_contest_advice():
                 "training_plan": analysis["training_plan"],
             }
         )
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/user/compare", methods=["GET"])
+def route_compare():
+    handle_a, handle_b, error = require_pair()
+    if error:
+        return error
+
+    try:
+        analysis_a = build_deep_analysis(handle_a)
+        analysis_b = build_deep_analysis(handle_b)
+        comparison = compare_deep_analyses(handle_a, analysis_a, handle_b, analysis_b)
+        return jsonify(comparison)
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
 

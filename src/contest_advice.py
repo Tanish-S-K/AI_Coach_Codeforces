@@ -1,6 +1,4 @@
 from __future__ import annotations
-
-import math
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from statistics import mean
@@ -252,7 +250,16 @@ def build_deep_analysis(handle: str) -> Dict[str, Any]:
     )
     avg_upsolves = average([contest["problems_upsolved"] for contest in recent_contests])
 
-    skill_map = build_skill_map(top_tags, pressure_scores, efficiency_scores, average_problem_rating, avg_first_ac, avg_upsolves)
+    skill_map = build_skill_map(
+        top_tags,
+        pressure_scores,
+        efficiency_scores,
+        average_problem_rating,
+        hardest_solved,
+        current_rating,
+        avg_first_ac,
+        avg_upsolves,
+    )
     strengths, focus_areas = derive_strengths_and_focus_areas(
         recent_contests=recent_contests,
         average_weekly=average_weekly,
@@ -322,17 +329,25 @@ def build_skill_map(
     pressure_scores: List[int],
     efficiency_scores: List[int],
     average_problem_rating: int,
+    hardest_solved: int,
+    current_rating: int,
     avg_first_ac: float,
     avg_upsolves: float,
 ) -> List[Dict[str, Any]]:
     tag_lookup = {item["tag"]: item["count"] for item in top_tags}
 
     scores = {
-        "speed": clamp(average(pressure_scores) - avg_first_ac * 0.35 + 18),
-        "accuracy": clamp(average(efficiency_scores)),
-        "depth": clamp(percentile_style_score(average_problem_rating, 800, 2200)),
-        "problem_reading": clamp(72 - avg_first_ac * 0.45),
-        "resilience": clamp(45 + avg_upsolves * 18),
+        "speed": clamp(55 + average(pressure_scores) * 0.2 + current_rating / 130 - avg_first_ac * 0.3),
+        "accuracy": clamp(40 + average(efficiency_scores) * 0.45),
+        "depth": clamp(
+            percentile_style_score(
+                average_problem_rating,
+                max(800, current_rating - 350),
+                max(current_rating + 700, hardest_solved + 1),
+            )
+        ),
+        "problem_reading": clamp(60 + (90 - avg_first_ac) * 0.4),
+        "resilience": clamp(42 + avg_upsolves * 18 + average(pressure_scores) * 0.12),
     }
 
     skill_map = []
@@ -363,18 +378,25 @@ def derive_strengths_and_focus_areas(
     focus_areas = []
     avg_accuracy = average([contest["accuracy_percent"] for contest in recent_contests])
     avg_upsolves = average([contest["problems_upsolved"] for contest in recent_contests])
+    avg_first_ac = average(
+        [contest["first_ac_offset_mins"] for contest in recent_contests if contest["first_ac_offset_mins"] is not None]
+    )
     rating_gain = sum(contest["delta"] for contest in recent_contests[-5:])
 
     if average_weekly >= 8:
         strengths.append("practice volume is no longer the bottleneck")
+    if avg_accuracy >= 65:
+        strengths.append("you convert a healthy share of attempts under pressure")
     if avg_upsolves >= 1:
         strengths.append("you revisit hard problems instead of abandoning them")
-    if hardest_solved >= current_rating + 200:
+    if hardest_solved >= current_rating + 150 or average_problem_rating >= current_rating - 50:
         strengths.append("you can already touch problems above your current rating band")
     if rating_gain > 0:
         strengths.append("recent contests show upward momentum")
+    if avg_first_ac and avg_first_ac <= 20:
+        strengths.append("your early contest pace is sharp enough to build momentum")
 
-    if avg_accuracy < 45:
+    if avg_accuracy < 55:
         focus_areas.append("conversion is low once you branch into harder tasks")
     if active_weeks < 14:
         focus_areas.append("consistency drops too much from week to week")
@@ -474,3 +496,122 @@ def ai_contest_prompt(handle: str, analysis: Dict[str, Any]) -> str:
     )
 
     return "\n".join(lines)
+
+
+def compare_deep_analyses(handle_a: str, analysis_a: Dict[str, Any], handle_b: str, analysis_b: Dict[str, Any]) -> Dict[str, Any]:
+    metric_specs = [
+        ("rating", "Current rating", True),
+        ("coach_score", "Coach score", True),
+        ("average_weekly_solves", "Average weekly solves", True),
+        ("active_weeks", "Active weeks", True),
+        ("solved_this_year", "Solved this year", True),
+        ("average_problem_rating", "Average solved difficulty", True),
+        ("hardest_solved", "Hardest solved difficulty", True),
+        ("rating_trend_5", "5-contest trend", True),
+        ("rating_trend_20", "20-contest trend", True),
+    ]
+
+    left = summarize_profile_for_compare(handle_a, analysis_a)
+    right = summarize_profile_for_compare(handle_b, analysis_b)
+    rows = []
+    left_wins = 0
+    right_wins = 0
+
+    for key, label, higher_is_better in metric_specs:
+        left_value = extract_metric(analysis_a, key)
+        right_value = extract_metric(analysis_b, key)
+        winner = pick_winner(left_value, right_value, higher_is_better)
+        if winner == "left":
+            left_wins += 1
+        elif winner == "right":
+            right_wins += 1
+
+        rows.append(
+            {
+                "key": key,
+                "label": label,
+                "left": left_value,
+                "right": right_value,
+                "winner": winner,
+                "difference": round(abs(left_value - right_value), 1),
+                "higher_is_better": higher_is_better,
+            }
+        )
+
+    verdict = build_compare_verdict(handle_a, handle_b, left_wins, right_wins, rows)
+    summary = build_compare_summary(handle_a, handle_b, analysis_a, analysis_b, rows, left_wins, right_wins)
+
+    return {
+        "left": left,
+        "right": right,
+        "metrics": rows,
+        "summary": summary,
+        "verdict": verdict,
+    }
+
+
+def summarize_profile_for_compare(handle: str, analysis: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "handle": handle,
+        "profile": analysis["profile"],
+        "overview": analysis["overview"],
+        "recent_contest": analysis["recent_contests"][0] if analysis["recent_contests"] else None,
+    }
+
+
+def extract_metric(analysis: Dict[str, Any], key: str) -> float:
+    if key in analysis["overview"]:
+        return float(analysis["overview"][key])
+    if key == "rating":
+        return float(analysis["profile"]["rating"])
+    return 0.0
+
+
+def pick_winner(left_value: float, right_value: float, higher_is_better: bool) -> str:
+    if left_value == right_value:
+        return "tie"
+    if higher_is_better:
+        return "left" if left_value > right_value else "right"
+    return "left" if left_value < right_value else "right"
+
+
+def build_compare_verdict(
+    handle_a: str,
+    handle_b: str,
+    left_wins: int,
+    right_wins: int,
+    rows: List[Dict[str, Any]],
+) -> str:
+    if left_wins == right_wins:
+        return f"{handle_a} and {handle_b} are very close across the core metrics."
+    leader = handle_a if left_wins > right_wins else handle_b
+    margin = abs(left_wins - right_wins)
+    return f"{leader} leads the comparison on {margin} more core metrics."
+
+
+def build_compare_summary(
+    handle_a: str,
+    handle_b: str,
+    analysis_a: Dict[str, Any],
+    analysis_b: Dict[str, Any],
+    rows: List[Dict[str, Any]],
+    left_wins: int,
+    right_wins: int,
+) -> List[str]:
+    leader = handle_a if left_wins > right_wins else handle_b if right_wins > left_wins else None
+    strongest_row = max(rows, key=lambda row: row["difference"])
+    left_recent = analysis_a["recent_contests"][0]["headline"] if analysis_a["recent_contests"] else "No recent contests."
+    right_recent = analysis_b["recent_contests"][0]["headline"] if analysis_b["recent_contests"] else "No recent contests."
+
+    summary = [
+        f"{handle_a}: {left_recent}",
+        f"{handle_b}: {right_recent}",
+        f"Largest gap: {strongest_row['label']} differs by {strongest_row['difference']}",
+    ]
+
+    if leader:
+        summary.append(f"Overall edge: {leader} wins {max(left_wins, right_wins)} of {len(rows)} tracked metrics.")
+    else:
+        summary.append("Overall edge: the two profiles are balanced enough that context matters more than raw totals.")
+
+    return summary

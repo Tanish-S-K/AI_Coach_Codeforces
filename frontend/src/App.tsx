@@ -18,7 +18,7 @@ import {
   YAxis,
 } from 'recharts';
 import './App.css';
-import type { ContestInsight, DeepAnalysis } from './types';
+import type { CompareAnalysis, ContestInsight, DeepAnalysis } from './types';
 
 const RATING_COLORS = ['#1f7aec', '#1db6a2', '#f29e38', '#ea5d5d'];
 
@@ -38,17 +38,39 @@ function miniProblemList(items: ContestInsight['solved_problems']) {
 
 export default function App() {
   const [handle, setHandle] = useState('');
+  const [compareHandle, setCompareHandle] = useState('');
+  const [recentHandles, setRecentHandles] = useState<string[]>([]);
   const [analysis, setAnalysis] = useState<DeepAnalysis | null>(null);
+  const [compareAnalysis, setCompareAnalysis] = useState<CompareAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
+  const [compareLoading, setCompareLoading] = useState(false);
   const [error, setError] = useState('');
+  const [compareError, setCompareError] = useState('');
 
   useEffect(() => {
     const storedHandle = localStorage.getItem('cf_handle');
+    const storedRecent = localStorage.getItem('cf_recent_handles');
+    if (storedRecent) {
+      try {
+        const parsed = JSON.parse(storedRecent) as string[];
+        setRecentHandles(parsed.filter((item) => typeof item === 'string'));
+      } catch {
+        setRecentHandles([]);
+      }
+    }
     if (storedHandle) {
       setHandle(storedHandle);
       void fetchAnalysis(storedHandle);
     }
   }, []);
+
+  function updateRecentHandles(nextHandle: string) {
+    setRecentHandles((current) => {
+      const deduped = [nextHandle, ...current.filter((item) => item !== nextHandle)].slice(0, 5);
+      localStorage.setItem('cf_recent_handles', JSON.stringify(deduped));
+      return deduped;
+    });
+  }
 
   async function fetchAnalysis(nextHandle: string) {
     const trimmed = nextHandle.trim();
@@ -56,7 +78,9 @@ export default function App() {
 
     setLoading(true);
     setError('');
+    setCompareError('');
     localStorage.setItem('cf_handle', trimmed);
+    updateRecentHandles(trimmed);
 
     try {
       const response = await fetch(`/user/deep-analysis?handle=${encodeURIComponent(trimmed)}`);
@@ -71,6 +95,36 @@ export default function App() {
       setAnalysis(null);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchComparison(leftHandle: string, rightHandle: string) {
+    const left = leftHandle.trim();
+    const right = rightHandle.trim();
+    if (!left || !right || left.toLowerCase() === right.toLowerCase()) {
+      setCompareError('Choose two different handles for the comparison.');
+      return;
+    }
+
+    setCompareLoading(true);
+    setCompareError('');
+    try {
+      const response = await fetch(
+        `/user/compare?handle_a=${encodeURIComponent(left)}&handle_b=${encodeURIComponent(right)}`
+      );
+      const payload = (await response.json()) as CompareAnalysis | { error: string };
+      if (!response.ok || 'error' in payload) {
+        throw new Error('error' in payload ? payload.error : 'Failed to compare handles');
+      }
+      setCompareAnalysis(payload);
+      updateRecentHandles(left);
+      updateRecentHandles(right);
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'Unknown error';
+      setCompareError(message);
+      setCompareAnalysis(null);
+    } finally {
+      setCompareLoading(false);
     }
   }
 
@@ -98,9 +152,9 @@ export default function App() {
           </p>
         </div>
 
-        <div className="search-panel">
-          <label htmlFor="handle-input">Codeforces handle</label>
-          <div className="search-row">
+          <div className="search-panel">
+            <label htmlFor="handle-input">Codeforces handle</label>
+            <div className="search-row">
             <input
               id="handle-input"
               type="text"
@@ -116,12 +170,42 @@ export default function App() {
             <button onClick={() => void fetchAnalysis(handle)} disabled={loading}>
               {loading ? 'Analyzing...' : 'Analyze Deeply'}
             </button>
+            </div>
+            <p className="search-hint">The backend combines deterministic coaching heuristics with Gemini when available.</p>
+            <div className="handle-chips">
+              {recentHandles.length > 0 ? recentHandles.map((item) => (
+                <button
+                  key={item}
+                  className="handle-chip"
+                  onClick={() => {
+                    setHandle(item);
+                    void fetchAnalysis(item);
+                  }}
+                  type="button"
+                >
+                  {item}
+                </button>
+              )) : <span className="muted-note">Recent handles will appear here after your first searches.</span>}
+            </div>
+            <div className="compare-panel">
+              <div className="compare-inputs">
+                <input
+                  type="text"
+                  placeholder="Compare against another handle"
+                  value={compareHandle}
+                  onChange={(event) => setCompareHandle(event.target.value)}
+                />
+                <button onClick={() => void fetchComparison(handle, compareHandle)} disabled={compareLoading || loading}>
+                  {compareLoading ? 'Comparing...' : 'Compare'}
+                </button>
+              </div>
+              <p className="search-hint">Use comparison mode to see who wins on rating, consistency, difficulty, and recent form.</p>
+            </div>
           </div>
-          <p className="search-hint">The backend combines deterministic coaching heuristics with Gemini when available.</p>
-        </div>
-      </section>
+        </section>
 
       {error ? <div className="status-banner error-banner">{error}</div> : null}
+      {compareError ? <div className="status-banner error-banner">{compareError}</div> : null}
       {loading && !analysis ? <div className="status-banner">Building your coaching profile...</div> : null}
 
       {analysis && profile && overview ? (
@@ -186,6 +270,57 @@ export default function App() {
               <strong>{overview.active_weeks}/24</strong>
             </article>
           </section>
+
+          {compareAnalysis ? (
+            <section className="card compare-card">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Head to Head</p>
+                  <h3>{compareAnalysis.left.handle} vs {compareAnalysis.right.handle}</h3>
+                </div>
+              </div>
+
+              <p className="headline compare-verdict">{compareAnalysis.verdict}</p>
+
+              <div className="compare-summary">
+                {compareAnalysis.summary.map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+              </div>
+
+              <div className="compare-cards">
+                {[compareAnalysis.left, compareAnalysis.right].map((side) => (
+                  <article key={side.handle} className="compare-person">
+                    <img src={side.profile.avatar} alt={`${side.handle} avatar`} className="avatar small-avatar" />
+                    <div>
+                      <p className="eyebrow">{side.handle}</p>
+                      <h4>{side.profile.rank}</h4>
+                      <div className="stat-pills">
+                        <span>{side.profile.rating}</span>
+                        <span>Peak {side.profile.max_rating}</span>
+                        <span>Coach {side.overview.coach_score}</span>
+                      </div>
+                      <p className="meta-line">{side.overview.average_weekly_solves} weekly solves on average</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className="compare-metrics">
+                {compareAnalysis.metrics.map((metric) => (
+                  <div key={metric.key} className="compare-metric-row">
+                    <span>{metric.label}</span>
+                    <strong>
+                      {metric.left} vs {metric.right}
+                    </strong>
+                    <span className={`delta-pill ${metric.winner === 'left' ? 'up' : metric.winner === 'right' ? 'down' : 'neutral'}`}>
+                      {metric.winner === 'tie' ? 'Tie' : metric.winner === 'left' ? `${compareAnalysis.left.handle} leads` : `${compareAnalysis.right.handle} leads`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <section className="insight-grid">
             <article className="card">

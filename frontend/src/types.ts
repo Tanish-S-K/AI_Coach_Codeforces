@@ -78,6 +78,56 @@ export interface AIReportPayload {
   error?: string;
 }
 
+export interface CompareMetric {
+  key: string;
+  label: string;
+  left: number;
+  right: number;
+  winner: 'left' | 'right' | 'tie';
+  difference: number;
+  higher_is_better: boolean;
+}
+
+export interface CompareSummaryCard {
+  handle: string;
+  profile: {
+    handle: string;
+    rating: number;
+    max_rating: number;
+    rank: string;
+    max_rank: string;
+    avatar: string;
+    registration_time: string;
+    days_on_site: number;
+    friend_of_count: number;
+    organization: string;
+    country: string;
+    strengths: string[];
+    focus_areas: string[];
+    tag_mastery: TagStat[];
+  };
+  overview: {
+    rating_trend_5: number;
+    rating_trend_20: number;
+    average_weekly_solves: number;
+    active_weeks: number;
+    solved_this_year: number;
+    average_problem_rating: number;
+    hardest_solved: number;
+    contests_played: number;
+    coach_score: number;
+  };
+  recent_contest: ContestInsight | null;
+}
+
+export interface CompareAnalysis {
+  left: CompareSummaryCard;
+  right: CompareSummaryCard;
+  metrics: CompareMetric[];
+  summary: string[];
+  verdict: string;
+}
+
 export interface DeepAnalysis {
   profile: {
     handle: string;

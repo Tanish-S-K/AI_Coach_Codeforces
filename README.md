@@ -65,6 +65,8 @@ The frontend now presents:
 - recent contest diagnosis cards
 - one-week training plan
 - dedicated AI report page
+- recent-handle quick switch chips
+- a head-to-head compare mode for two handles
 
 ## Stack
 
@@ -125,6 +127,10 @@ Without this key, the app still works using the built-in heuristic coaching fall
 - `frontend/src/App.tsx`: main dashboard
 - `frontend/src/contest_advice.tsx`: AI report page
 - `frontend/src/types.ts`: shared frontend data model
+
+## Extra feature
+
+The dashboard now supports comparing two Codeforces handles side by side with a dedicated backend endpoint and a comparison panel in the UI. This makes the app feel more like an analysis tool than a single-user profile viewer.
 
 ## Verification
 
