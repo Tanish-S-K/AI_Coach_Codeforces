@@ -32,14 +32,18 @@ def route_user_info():
 
 @app.route('/user/contest-advice', methods=['GET', 'POST'])
 def route_contest_advice():
+    import os
     handle = request.args.get("handle")
     if not handle:
         return jsonify({"error": "Missing handle parameter"}), 400
 
+    use_cache = os.environ.get("USE_CACHE", "1") == "1"
     cache_key = f"contest_advice_{handle}"
-    cached_result = cache.get(cache_key)
-    if cached_result:
-        return jsonify(cached_result)
+    
+    if use_cache:
+        cached_result = cache.get(cache_key)
+        if cached_result:
+            return jsonify(cached_result)
 
     try:
         user_info = get_user_info(handle)
@@ -53,7 +57,8 @@ def route_contest_advice():
             "contest_summary": contest_data
         }
 
-        cache.set(cache_key, result, timeout=3600)
+        if use_cache:
+            cache.set(cache_key, result, timeout=3600)
         return jsonify(result)
 
     except Exception as e:
@@ -125,4 +130,4 @@ def route_rating_history():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)

@@ -17,7 +17,7 @@ BASE_URL = "https://codeforces.com/api"
 
 def fetch_data(url):
     for i in range(3):
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)
         if response.status_code == 200:
             return response.json().get("result", [])
         if response.status_code == 400:
@@ -29,9 +29,20 @@ def fetch_data(url):
 def conditional_memoize(timeout=3600):
     def decorator(func):
         def wrapped(*args, **kwargs):
-            if cache_proxy["instance"] is not None:
-                cached_func = cache_proxy["instance"].memoize(timeout)(func)
-                return cached_func(*args, **kwargs)
+            import os
+            use_cache = os.environ.get("USE_CACHE", "1") == "1"
+            
+            if use_cache and cache_proxy["instance"] is not None:
+                key_parts = [func.__name__] + [str(arg) for arg in args] + [f"{k}={v}" for k, v in sorted(kwargs.items())]
+                cache_key = "_".join(key_parts)
+                
+                cached_val = cache_proxy["instance"].get(cache_key)
+                if cached_val is not None:
+                    return cached_val
+                    
+                result = func(*args, **kwargs)
+                cache_proxy["instance"].set(cache_key, result, timeout=timeout)
+                return result
             else:
                 return func(*args, **kwargs)
         return wrapped
